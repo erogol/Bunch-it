@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="no-cache">
+		<meta http-equiv="Expires" content="-1">
+		<meta http-equiv="Cache-Control" content="no-cache">
+
+		<title><%= title %></title>
+		<%= csrf_meta_tag %>
+		<%= render 'layouts/stylesheets.html.erb'%>
+		<%= javascript_include_tag "d3.js", "d3.layout.js", "d3.geom.js","GraphMapUtil.js"%>
+		<%= javascript_include_tag "http://code.jquery.com/jquery-latest.js"%>
+		<%= javascript_include_tag "jquery.tipsy.js", "jquery-ui-1.8.18.custom.min.js", "jquery.notify.js"%>
+		<%= render "results/graphMap.html.erb"%>
+		<link rel="shortcut icon" href="favicon.ico" >
+		<%= render "layouts/filetree_javascript.html.erb"%>
+		<script type="text/javascript">
+			function notification(_title, _txt) {
+				var $notArea = $("#container").notify();
+				$notArea.notify("create", {
+					title : _title,
+					text : _txt
+				});
+			}
+
+			function validate() {
+				if(document.getElementById("searchBarResults").value == "") {
+					return false;
+				} else
+					return true;
+			}
+
+			function setDraggable() {
+				$(".draggableTitle").draggable({
+					appendTo : 'body',
+					scroll : false,
+					containment : 'window',
+					cursor : "pointer",
+					cursorAt : {
+						left : 5
+					},
+					helper : function(event) {
+						var text = $(this).text();
+						if(text.length > 20)
+							text = text.substring(0, 20) + "...";
+						return $("<div id='dragDiv'></div>").append(text);
+					}
+				});
+
+				$("#scrollingDiv").droppable({
+					drop : function(event, ui) {
+						var url = $(ui.draggable).attr("href");
+						var title = $(ui.draggable).text();
+						var snippet = $(ui.draggable).parent().siblings("#snippetDiv").text();
+						addResultToFolder(url, title, snippet);
+					}
+				});
+			}
+
+			/**
+			 * Add ajax even to folder image
+			 */
+			function successFunc(r, url, title, folder) {
+				var $notArea = $("#container").notify();
+				$notArea.notify("create", {
+					title : 'Insertion Succeded : ' + title,
+					text : url + ' has been added to folder ' + folder
+				});
+			}
+
+			function addResultToFolder(url, title, snippet) {
+				if(title.match("...")) {
+					title = title.substring(0, title.length - 3);
+				}
+				$.ajax({
+					type : "GET",
+					url : '/tree/insertResult/?url=' + encodeURIComponent(url) + '&title=' + encodeURIComponent(title) + '&folder=' + folderName + '&snippet=' + encodeURIComponent(snippet),
+					cache : false,
+					success : function(res) {
+						if(res == "F")
+							notification("Operation Failed", "You have that bookmark in that folder!");
+						else {
+							folderName = res;
+							notification("Operation Suceeded", "Bookmark has been created.");
+							updateFolderContent(url, title, folderName, snippet);
+							//it is in _filetree_javascript.html.erb
+						}
+					},
+					error : function(x, y, z) {
+						alert(x.responseText);
+					}
+				});
+			}
+
+
+			$().ready(function() {
+				/**
+				 * accordion effect for folder tree _filetree.html.erb
+				 */
+				//$.fx.speeds._default = 1000;
+				$(function() {
+					$("#dialog").dialog({
+						autoOpen : false,
+						show : "blind",
+						hide : "explode",
+						resizable : true,
+						modal : true,
+						width : 400
+					});
+
+					$("#scrollingDiv").click(function() {
+						$("#dialog").dialog("open");
+						return false;
+					});
+				});
+				$(function() {
+					$("#accordion").accordion({
+						active : false,
+						fillSpace : false,
+						collapsible : true,
+						autoHeight : false
+
+					});
+				});
+
+				/**
+				 * give the scrolling animation to folder image
+				 */
+				//set the span under the folder img
+				setFolderImgSpan();
+
+				var $scrollingDiv = $("#scrollingDiv");
+				$(window).scroll(function() {
+					$scrollingDiv.stop().animate({
+						"marginTop" : ($(window).scrollTop() + 30) + "px"
+					}, "slow");
+				});
+				$scrollingDiv.tipsy({
+					gravity : 'n',
+					fade : 'true',
+					fallback : "Drag Titles To Bookmark the URL",
+					html : true
+				});
+
+				/**
+				 * drag function for results
+				 */
+				setDraggable();
+
+				/**
+				 * Add default focus to search bar
+				 */
+				$(".searchBar").focus();
+
+				/**
+				 * set size of the svg element
+				 */
+
+			});
+		</script>
+	</head>
+	<body>
+		<div class="container">
+			<%= render 'layouts/results_header.html.erb' %>
+			<section class="round">
+				<% flash.each do |key, msg| %>
+				<%= content_tag :div, msg, :class => "flash", :id => key %>
+				<% content_tag :script, :type => "text/javascript" do %>
+				$('<%= key %>').style.display = 'none';
+				new Effect.Appear('<%= key %>', {duration: 3});
+				<% end %>
+
+				<% content_tag :script, :type => "text/javascript" do %>
+				setTimeout("new Effect.Fade('<%= key %>');", 10000);
+				<% end %>
+				<% end %>
+				<%= yield %>
+			</section>
+			<%= render 'layouts/footer.html.erb'%>
+		</div>
+		<%if signed_in?%>
+		<div id="scrollingDiv" class="span-3" >
+			<%== image_tag("folder100x100.gif", :alt => "Bunchit App",:id=>"resultFolder", :class => "round", :height => "72", :width => "100") %>
+			<span id="folderImageName"></span>
+		</div>
+		<%end%>
+
+		<div id="container" style="display:none">
+			<!--
+			Later on, you can choose which template to use by referring to the
+			ID assigned to each template.  Alternatively, you could refer
+			to each template by index, so in this example, "basic-tempate" is
+			index 0 and "advanced-template" is index 1.
+			-->
+			<div id="basic-template">
+				<a class="ui-notify-cross ui-notify-close" href="#">x</a>
+				<h1>#{title}</h1>
+				<p>
+					#{text}
+				</p>
+			</div>
+			<div id="advanced-template">
+				<!-- ... you get the idea ... -->
+			</div>
+		</div>
+
+		<%if signed_in?%>
+		<div id="dialog" title="Bookmark Folders" style="resize: both;">
+			<%= render "layouts/filetree.html.erb"%>
+		</div>
+		<%end%>
+
+		<div id="feedback">
+			<a href="http://freeonlinesurveys.com/s.asp?sid=ax9hf5wuoqgfch546343" onClick="window.open('http://freeonlinesurveys.com/s.asp?sid=ax9hf5wuoqgfch546343', '','toolbar=0,location=0,directories=0,status=0,menubar=0,scrollbars=1,resizable=1,width=1024,height=768');return false" ><img src="assets/feedback.png" /></a>
+		</div>
+
+	</body>
+</html>

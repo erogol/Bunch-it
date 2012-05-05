@@ -1,0 +1,33 @@
+<!-- it is controlled a javascript in application.html.erb -->
+<div id="dialog-form" title="Create new user">
+	<input type="text" id="createFolderName">
+	</input>
+</div>
+<button id="addButton" class="treeButton" onclick="$( '#dialog-form' ).dialog( 'open' );">
+	Add Folder
+</button>
+<button class="treeButton" id="deleteButton" onclick="deleteFolderAjax(folderName);">
+	Delete
+</button>
+<div id="accordion">
+	<% current_user.folders.each do |f| %> <h3 id="<%= f.folder_name%>" class="folderBar"><a href="#" class="folderName"><b id="folderName"><%= f.folder_name%></b> created <%= distance_of_time_in_words(f.created_at, Time.now)%> before</a></h3>
+	<div class="<%= f.folder_name.gsub(/[\.\s#]/) {|s|  s.replace("") }%>">
+		<%if f.docs.empty?%> <b>-No document currently!-</b>
+		<%else%>
+		<% f.docs.each do |r|%>
+		<div class="bookmarkResultContent">
+			<img class="deleteDocButton" src="assets/delete_30.png" width="30" height="30" alt="delete">
+			<a class="title" href="<%= r.url%>" style = "color:#0066CC;"><%= r.title%></a>
+			<br/>
+			<b class="url"><%= r.url%></b>
+			<br />
+			<div >
+				<%= r.snippet%>
+			</div>
+			<hr/>
+		</div>
+		<%end%>
+		<%end%>
+	</div>
+	<%end%>
+</div>

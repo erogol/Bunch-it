@@ -1,0 +1,457 @@
+<script type="text/javascript">
+	/*
+* This is the code of the Bunch-It GraphMap
+* Eren Golge
+* last edit: May 2 2012
+*/
+/*****************************************************/
+//GLOBALS
+var nodes;
+var sites;
+
+var settings;
+
+//set object dimensions
+var wid;
+var w;
+var h;
+var textX;
+var textSize;
+var vis;
+
+var json;
+//this is for to remove unwanted charaters
+var lastSelectedNode = null;
+//to color last selected bode
+var numOfClusters ;
+//find overlap docs
+var overlapLinks;
+
+var r;
+var linkw ;
+
+var force;
+
+var links;
+
+var siteDomain = "http://localhost:3000/results?utf8=%E2%9C%93&query=";
+// this address need to be chaged regarding the url of carrot2 dcs
+var maxScore = 0;
+var minScore = 100000;
+var otherTopicScore = 0;
+var query = '';
+
+/*
+* Callback function for onclick event for circle elements
+*/
+function clickOverCirleOnce(d) {
+	if(settings == 0){
+		if(d3.event.ctrlKey) {
+			if(query.indexOf(d.name)) {//if node is not orange
+				d3.select(this).style("fill", "orange").style("stroke", "yellow");
+				query += d.name + " ";
+			}
+		} else {
+			links.attr("stroke-opacity", function(p) {
+			if(p.source.id == d.id || p.target.id == d.id) {
+				return 1;
+			} else {
+				return 0.4;
+			}
+			});
+		
+			d3.select(this).style("fill", "lightcoral").style("stroke", "red");
+			if(lastSelectedNode != null) {
+				d3.select(lastSelectedNode).style("fill", "lightgreen").style("stroke", "green");
+			}
+			lastSelectedNode = this;
+			updateResults(d.docs);
+		}
+	}else if(settings == 1){
+				d3.select(this).style("fill", "lightcoral").style("stroke", "red");
+				if(lastSelectedNode != null) {
+					d3.select(lastSelectedNode).style("fill", "lightgreen").style("stroke", "green");
+				}
+				lastSelectedNode = this;
+				updateResultsSetting1(findMatchingDocsWithTheSite(d.url, json.documents.length));
+	}
+}
+/*
+* callback function for dblclick event on circle events
+*/
+function clickOverCirleTwice(d) {
+//console.log(query.indexOf("adfasd"));
+if(query.indexOf(d.name)) {
+query += d.name + "";
+}
+d3.select(this).style("fill", "orange").style("stroke", "yellow");
+window.location = siteDomain + query;
+}
+
+/*
+* parse caroot2 returned JSOn and create minimal one with needed information only
+*/
+function createNodesJson(data, numOfCluster) {
+var nodes = new Array(numOfCluster);
+for( i = 0; i < numOfCluster; i++) {
+var score = data.clusters[i].score;
+nodes[i] = {
+"name" : data.clusters[i].phrases,
+"score" : score,
+"num_documents" : data.clusters[i].size,
+"docs" : data.clusters[i].documents,
+"id" : data.clusters[i].id
+}
+}
+for( i = 0; i < numOfCluster; i++) {
+if(maxScore < nodes[i].score) {
+maxScore = nodes[i].score;
+}
+if(minScore > nodes[i].score && nodes[i].score != 0) {
+minScore = nodes[i].score;
+}
+}
+otherTopicScore = maxScore;
+nodes[numOfCluster - 1].score = otherTopicScore;
+//alert(maxScore+" "+minScore);
+return nodes;
+}
+
+/*Click on other elements */
+function clickOver(d, obj) {
+	var circle = obj.parentNode.childNodes[0];
+	if(settings == 0){
+		if(d3.event.ctrlKey) {
+			if(query.indexOf(d.name)) {//if the node is not already orange
+				d3.select(circle).style("fill", "orange").style("stroke", "yellow");
+				query += d.name + " ";
+			}
+		} else {
+			links.attr("stroke-opacity", function(p) {
+			if(p.source.id == d.id || p.target.id == d.id) {
+				return 1;
+			} else {
+				return 0.4;
+			}
+				});
+			d3.select(circle).style("fill", "lightcoral").style("stroke", "red");
+			if(lastSelectedNode != null) {
+				d3.select(lastSelectedNode).style("fill", "lightgreen").style("stroke", "green");
+			}
+			lastSelectedNode = circle;
+			updateResults(d.docs);
+		}
+	}else if(settings == 1){
+			d3.select(circle).style("fill", "lightcoral").style("stroke", "red");
+			if(lastSelectedNode != null) {
+				d3.select(lastSelectedNode).style("fill", "lightgreen").style("stroke", "green");
+			}
+			lastSelectedNode = circle;
+			updateResultsSetting1(findMatchingDocsWithTheSite(d.url, json.documents.length));
+	}
+}
+
+function doubleClickOver(d, obj) {
+var circle = obj.parentNode.childNodes[0];
+if(query.indexOf(d.name)) {
+query += d.name + "";
+}
+d3.select(circle).style("fill", "orange").style("stroke", "yellow");
+window.location = siteDomain + query;
+}
+
+//fill the web sites to array to be used in website classification
+function getSitesToArray(data) {
+var num_of_docs = data.documents.length;
+//create the array to be returned
+var sites = new Array();
+var site_names = new Array();
+//to keep track of seen sites
+//for each doc
+for( i = 0; i < num_of_docs; i++) {
+//find the domain name
+var temp_url = data.documents[i].url;
+temp_url = getDomainUrlOfAddress(temp_url);
+//if it is entered
+if(site_names.indexOf(temp_url) > -1) {
+//increase it counter
+sites[site_names.indexOf(temp_url)].counter++;
+}//if it is not entered
+else {
+//insert it to array
+site_names.push(temp_url);
+sites.push({
+"url" : temp_url,
+"counter" : 1
+});
+}
+}
+return sites;
+}
+
+//ind the matching docs with the selected web site domain
+function findMatchingDocsWithTheSite(domain, docNumber){
+	var docs = new Array();
+	for(i = 0; i<json.documents.length; i++){
+		var temp_url = json.documents[i].url;
+		temp_url = getDomainUrlOfAddress(temp_url);
+		if(temp_url == domain){
+			docs.push(json.documents[i]);
+		}
+	}
+	return docs;
+}
+
+function updateResultsSetting1(docum){
+	var domains = new Array();
+	for(var i = 0 ; i<docum.length; i++){
+		url = docum[i].url;
+		domains.push(getDomainUrlOfAddress(url));
+	}
+	jQuery(".resultsDiv").html('');
+	for(var i = 0 ; i<docum.length; i++){
+		var snippet = docum[i].snippet;
+		var url = docum[i].url;
+		var title = docum[i].title;
+		$(".resultsDiv").append("<div id='result" + docum[i].id + "' class='resultDiv' onmouseover=" + '"' + "$('#result" + docum[i] + "').addClass('highlightCustom')" + '"' + "onmouseout=" + '"' + "$('#result" + docum[i].id + "').removeClass('highlightCustom')" + '"' + ">");
+		$("#result" + docum[i].id).append("<div class='faviconDiv'><img id='faviconresult" + docum[i].id + "' class='favicon' width='16' height='16' src='http://www.google.com/s2/favicons?domain=" + getDomainUrlOfAddress(docum[i].url) + "' alt=''></div>");
+		$("#result" + docum[i].id).append("<div><a class='linkBig link draggableTitle' href='" + url + "'>" + title + "</a></div><div id='snippetDiv'>" + snippet + "</div><div><a class='url'>" + url + "</a></div></div>");
+	}
+	setDraggable();
+	// it is on _result.html.erb
+}
+
+function updateResults(documents) {
+var domains = new Array(documents.length);
+jQuery.each(documents, function(index, value) {
+var urll = json.documents[value].url;
+urll = urll.substring(7, urll.length);
+urll = urll.substring(0, urll.indexOf('/'));
+domains[index] = urll;
+});
+jQuery(".resultsDiv").html('');
+jQuery.each(documents, function(index, value) {
+var snippet = json.documents[value].snippet;
+var url = json.documents[value].url;
+var title = json.documents[value].title;
+$(".resultsDiv").append("<div id='result" + value + "' class='resultDiv' onmouseover=" + '"' + "$('#result" + value + "').addClass('highlightCustom')" + '"' + "onmouseout=" + '"' + "$('#result" + value + "').removeClass('highlightCustom')" + '"' + ">");
+$("#result" + value).append("<div class='faviconDiv'><img id='faviconresult" + value + "' class='favicon' width='16' height='16' src='http://www.google.com/s2/favicons?domain=" + domains[index] + "' alt=''></div>");
+$("#result" + value).append("<div><a class='linkBig link draggableTitle' href='" + url + "'>" + title + "</a></div><div id='snippetDiv'>" + snippet + "</div><div><a class='url'>" + url + "</a></div></div>");
+});
+setDraggable();
+// it is on _result.html.erb
+}
+
+//content clustering
+function setting0() {
+//console.log(nodes);
+r = d3.scale.sqrt().domain([minScore / 2, maxScore * 1.5]).range([5, 25]);
+linkw = d3.scale.sqrt().domain([1, maxOverlap]).range([5, 18]);
+
+force = self.force = d3.layout.force().gravity(.07).linkDistance(100).linkStrength(0.3).charge(-150).nodes(nodes).links(overlapLinks).size([w, h]).start();
+
+vis.style("opacity", 1e-6).transition().duration(3000).style("opacity", 1);
+
+links = vis.selectAll("line.link").data(overlapLinks).enter().append("svg:line").attr("class", "link").attr("id", function(d) {
+return d.source.id;
+}).style("stroke-width", function(d) {
+return linkw(d.overlapNum);
+}).attr("x1", function(d) {
+return d.source.x;
+}).attr("y1", function(d) {
+return d.source.y;
+}).attr("x2", function(d) {
+return d.target.x;
+}).attr("y2", function(d) {
+return d.target.y;
+}).attr("stroke-opacity", 0.4);
+
+node = vis.selectAll("g.node").data(nodes).enter().append("svg:g").attr("class", "node").attr("cx", function(d) {
+return d.x;
+}).attr("cy", function(d) {
+return d.y;
+}).call(force.drag);
+
+//console.log(node);
+
+node.append("svg:circle").attr("class", "node2").attr("id", "circle").style("fill", 'lightblue').style("stroke", 'blue').on("click", clickOverCirleOnce).on("dblclick", clickOverCirleTwice).attr("r", function(d) {
+return r(d.score);
+});
+
+node.append("svg:text").attr("text-anchor", "middle").on("click", function(d) {
+clickOver(d, this);
+}).on("dblclick", function(d) {
+doubleClickOver(d, this);
+}).attr("class", "nodescore").attr("id", "nodescore").attr("dy", ".35em").attr("style", function(d, i) {
+return "font-size:" + r(d.score) / 1.25 + "px;"
+}).text(function(d, i) {
+if(d.name == "Other Topics")
+return '';
+return d.num_documents
+});
+
+node.append("svg:text").style("fill", 'black').style("stroke", '#fff').attr("text-anchor", "middle").attr("class", "nodetext")
+//.attr("dx", function(d){return d.score/4;})
+//.attr("style", function(d){ return "font-size:"+d.score/4+";";})
+.on("click", function(d) {
+clickOver(d, this);
+}).on("dblclick", function(d) {
+doubleClickOver(d, this);
+}).attr("dy", function(d) {
+return -1 * (r(d.score) + 2);
+}).text(function(d) {
+if(d.name[0].length > 17) {
+return d.name[0].substring(0, 15) + "...";
+} else {
+return d.name;
+}
+});
+
+node.append("title").text(function(d) {
+return d.name + " " + d.score.toFixed(1);
+});
+links.append("title").text(function(d) {
+return d.overlapNum;
+});
+//document.getElementsById("nodescore").style.fontSize = "50px";
+
+force.on("tick", function() {
+links.attr("x1", function(d) {
+return d.source.x;
+}).attr("y1", function(d) {
+return d.source.y;
+}).attr("x2", function(d) {
+return d.target.x;
+}).attr("y2", function(d) {
+return d.target.y;
+});
+node.attr("transform", function(d) {
+return "translate(" + d.x + "," + d.y + ")";
+});
+});
+
+//This is for firefox
+$("svg").css("height", "100%").css("width", "100%");
+
+}
+
+//site name classification
+function setting1() {
+//console.log(nodes);
+r = d3.scale.sqrt().domain([1 / 2, 10 * 1.5]).range([3, 30]);
+
+force = self.force = d3.layout.force().gravity(.11).charge(-150).nodes(sites).size([w, h]).start();
+
+vis.style("opacity", 1e-6).transition().duration(3000).style("opacity", 1);
+
+node = vis.selectAll("g.node").data(sites).enter().append("svg:g").attr("class", "node").attr("cx", function(d) {
+return d.x;
+}).attr("cy", function(d) {
+return d.y;
+}).call(force.drag);
+
+//console.log(node);
+
+node.append("svg:circle").attr("class", "node2").attr("id", "circle").style("fill", 'lightblue').style("stroke", 'blue').on("click", clickOverCirleOnce).on("dblclick", clickOverCirleTwice).attr("r", function(d) {
+return r(d.counter);
+});
+
+node.append("svg:text").attr("text-anchor", "middle").on("click", function(d) {
+clickOver(d, this);
+}).on("dblclick", function(d) {
+doubleClickOver(d, this);
+}).attr("class", "nodescore").attr("id", "nodescore").attr("dy", ".35em").attr("style", function(d, i) {
+return "font-size:" + r(d.counter) / 1.25 + "px;"
+}).text(function(d, i) {
+if(d.url == "Other Topics")
+return '';
+return d.counter
+});
+
+node.append("svg:text").style("fill", 'black').style("stroke", '#fff').attr("text-anchor", "middle").attr("class", "nodetext")
+//.attr("dx", function(d){return d.score/4;})
+//.attr("style", function(d){ return "font-size:"+d.score/4+";";})
+.on("click", function(d) {
+clickOver(d, this);
+}).on("dblclick", function(d) {
+doubleClickOver(d, this);
+}).attr("dy", function(d) {
+return -1 * (r(d.counter) + 2);
+}).text(function(d) {
+if(d.url.length > 17) {
+return d.url.substring(0, 15) + "...";
+} else {
+return d.url;
+}
+});
+
+node.append("title").text(function(d) {
+return d.url + " " + d.counter.toFixed(1);
+});
+
+//document.getElementsById("nodescore").style.fontSize = "50px";
+
+force.on("tick", function() {
+node.attr("transform", function(d) {
+return "translate(" + d.x + "," + d.y + ")";
+});
+});
+
+//This is for firefox
+$("svg").css("height", "100%").css("width", "100%");
+
+}
+
+function initGraphMap(setting){
+/**
+* GraphMap initialization
+*/
+//Global
+
+settings = setting; 	//0 is Normal Cluster Graph
+//1 is Sites Cluster Graph
+
+//set object dimensions
+wid = document.getElementById("graphMap").offsetWidth;
+document.getElementById("graphMap").style.height = wid+"px";
+w = wid;
+h = wid;
+textX = d3.scale.sqrt().domain([0, 4000]).range([0, 100]);
+textSize = d3.scale.sqrt().domain([0, 4000]).range([0, 100]);
+vis = d3.select(document.getElementById("graphMap")).append("svg:svg")
+
+json = <%= sanitize(@json.delete("<>&"))%>
+	//this is for to remove unwanted charaters
+	lastSelectedNode = null;
+	//to color last selected bode
+	numOfClusters = json.clusters.length;
+
+	//find overlap docs
+	overlapLinks = FindOverlappingDocs(json, numOfClusters);
+
+	if(settings == 0) {
+		//get cluster info into array nodes
+		nodes = createNodesJson(json, numOfClusters);
+		setting0();
+	} else if(settings == 1) {
+		//get sites info to array
+		sites = getSitesToArray(json);
+		setting1();
+	}
+	}
+
+	function graphMapSetting1() {
+		$('#graphMap').html("");
+		initGraphMap(1);
+
+	}
+
+	function graphMapSetting0() {
+		$('#graphMap').html("");
+		initGraphMap(0);
+	}
+	
+	$().ready(function() {
+		initGraphMap(0);
+	});
+</script>

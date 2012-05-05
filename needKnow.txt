@@ -1,0 +1,22 @@
+rspec
+rspec-rails-pure
+rspec-growl
+autotest
+spork (test server)
+
+rspec spec/
+rake spec
+bundle exec rspec spec/
+
+The specified module could not be found. - C:/Ruby192/lib/ruby/gems/1.9.1/gems/mysql-2.8.1-x86-mingw32/lib/1.9/mysql_api.so (LoadError )
+
+This occurs every time I try to load the Webrick server.
+
+The solution is to find the "libmysql.dll" file and copy it to your Ruby bin.
+
+The location of these folders on Windows 7 is:
+C:\Program Files\MySQL\MySQL Server 5.5\lib
+and
+C:\Ruby192\bin
+
+As soon as that DLL is copied you can start the server without any problems.

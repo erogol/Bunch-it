@@ -1,0 +1,192 @@
+<script language="JavaScript" type="text/javascript">
+		var folderName = null;
+		$(document).ready(function() {
+			$(".treeButton").button();
+			$( "#dialog-form" ).dialog({
+				autoOpen: false,
+				height: 125,
+				width: 250,
+				modal: true,
+				buttons:{
+					"Create an folder": function() {
+						createFolderAjax();
+						$('#dialog-form').dialog('close');
+					}
+				}
+			});
+			selectFolder();
+			//add a calback function for the result deletion button 
+			$("img.deleteDocButton").click(function(e){
+					var title = $(this).siblings("a.title").html();
+					var url = $(this).siblings("b.url").html();
+					deleteResultAjax(title,url, this);
+			});
+		});
+		
+		
+		function checkLength( o, n, min, max ) {
+			if ( o.val().length > max || o.val().length < min ) {
+				o.addClass( "ui-state-error" );
+				updateTips( "Length of " + n + " must be between " +
+					min + " and " + max + "." );
+				return false;
+			} else {
+				return true;
+			}
+		}
+		
+		function checkRegexp( o, regexp, n ) {
+			if ( !( regexp.test( o.val() ) ) ) {
+				o.addClass( "ui-state-error" );
+				updateTips( n );
+				return false;
+			} else {
+				return true;
+			}
+		}
+		
+		function updateTips( t ) {
+			tips
+				.text( t )
+				.addClass( "ui-state-highlight" );
+			setTimeout(function() {
+				tips.removeClass( "ui-state-highlight", 1500 );
+			}, 500 );
+		}
+		
+		function selectFolder() {
+			$("h3.folderBar").click(function(e) {
+				e.stopPropagation();
+				if(!this.className.match('ui-state-active')) {
+					folderName = this.id;
+					//console.log(folderName);
+					setFolderImgSpan();// it is in _result.html.erb
+					//$("#deleteButton").show();
+				} else {
+					//$("#deleteButton").hide();
+					setFolderImgSpan();// it is in _result.html.erb
+					folderName = null;
+					//console.log(folderName);
+				}
+			});
+		}
+
+		function deleteFolderAjax(folderName) {
+			if(folderName == "Default Folder")
+				notification("", "Default Folder cannot be deleted for your good.");
+			else	
+				$.ajax({
+					type : "GET",
+					url : '/tree/deleteFolder/?folder=' + encodeURIComponent(folderName),
+					cache : false,
+					success : function(res) {
+						deleteFolder(folderName);
+					},
+					error : function(x, y, z) {
+						alert(x.responseText);
+					}
+				});
+		}
+
+		function deleteFolder(folderNameLocal, dom) {
+			folderName2 = folderNameLocal.replace(/[\s#\.]/g, "");
+			div_element = $("div." + folderName2);
+			bar_elements = $(document.getElementById(folderNameLocal));
+			bar_elements.remove();
+			div_element.remove();
+			folderName = "Default Folder";
+			resetFolderImgSpan();
+		}
+
+		function createFolderAjax() {
+			folderName = $("#createFolderName").val();
+			$.ajax({
+				type : "GET",
+				url : '/tree/createFolder/?folder=' + encodeURIComponent(folderName),
+				cache : false,
+				success : function(res) {
+					if(res == "F") //if F is returned from server it means "There is a folder with same name"
+						//alert("You have a folder with same name!");
+						notification("Operation Failed", "You have a folder with same name!");	
+					else	
+						createFolder(folderName);
+				},
+				error : function(x, y, z) {
+					alert(x.responseText);
+				}
+			});
+		}
+
+		function createFolder(folderNameLocal) {
+			$("#accordion").append('<h3 class="folderBar" id="' + folderNameLocal + '"><a href="#" class="folderName" ><b id="folderName">' + folderNameLocal + '</b></a></h3><div class="'+folderNameLocal.replace(/[\s#\.]/g, "")+'"><p><b>-No document currently!-</b></p></div>').accordion("destroy").accordion({
+				active: false,
+				fillSpace : false,
+				collapsible: true,
+				autoHeight: false
+			}).accordion("resize");
+
+			$(document.getElementById(folderName)).click(function(e) {
+				if(this.className.match('ui-state-active')) {
+					folderName = folderNameLocal;
+					setFolderImgSpan();// it is in _result.html.erb
+					//console.log(folderName);
+				} else {
+					setFolderImgSpan();// it is in _result.html.erb
+					folderName = null;
+					//console.log(folderName);
+				}
+			});
+		}
+		
+		//update the content of the folder div on accordion
+		var count = 0; // counts number of added result for current session before first refresh
+		function updateFolderContent(url, title, folderName, snippet){
+		    var content = $(document.getElementById(folderName)).siblings("div."+folderName.replace(/[\s#\.]/g, ""));
+		    //console.log(content.html());
+		    if(content.html().indexOf("-No document currently!-") != -1)
+			   content.html("");
+		    content.append("<div class='bookmarkResultContent'><img class='deleteDocButton"+count+"' src='assets/delete_30.png' width='30' height='30' alt='delete'><a class='title' href='"+url+"' style='color:#0066CC;'>"+title+"</a><br/><b class='url'>"+url+"</b><br/><div>"+snippet+"</div><hr/></div>");
+			$("img.deleteDocButton"+count).click(function(e){
+					var title = $(this).siblings("a.title").html();
+					var url = $(this).siblings("b.url").html();
+					deleteResultAjax(title,url, this);
+			});
+			count++;
+		}
+		
+		function deleteResultAjax(title, url, domObj){
+			$.ajax({
+				type : "GET",
+				url : '/tree/deleteResult/?title='+encodeURIComponent(title)+"&url="+encodeURIComponent(url), 
+				cache : false,
+				success : function(res) {
+					if(res == "F") //if F is returned from server it means "There is a folder with same name"
+						notification("Operation Failed", "Bookmark cannot be deleted! Sorry :(");	
+					else
+						notification("Operation Succeed", "Bookmark've been deleted.");		
+						deleteResult(domObj);
+				},
+				error : function(x, y, z) {
+					alert(x.responseText);
+				}
+			});
+		}
+		
+		function deleteResult(domObjLocal){
+			var domObj = $(domObjLocal);
+			var div = domObj.parent();
+			div.remove();
+		}
+		
+		
+		function setFolderImgSpan(){
+				if(folderName ==  null && $("#folderImageName") != null)//folderName var is defined in _filetree_javascript.html.erb
+					$("#folderImageName").html("Default Folder");
+				else if(("#folderImageName") != null)
+					$("#folderImageName").html(folderName.substring(0,14)+"...");
+		}
+		
+		function resetFolderImgSpan(){
+			$("#folderImageName").html("Default Folder");
+		}
+	</script>

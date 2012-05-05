@@ -1,0 +1,11 @@
+
+->Sign in wrapper on current page.
+->Look the system design 
+->no cluster a karsi onlem 
+->fluid css for the page
+->_index2.html.erb de sitedomain variable ina dikkat et domain alinca
+-> sanitize problem on _index2.html.erb
+-> trending searches
+-> protect pages fron unauthorized access
+-> favicon problem on results page
+-> nocluster noticification problem "It repeates multiple times"

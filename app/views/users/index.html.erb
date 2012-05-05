@@ -1,0 +1,29 @@
+<%= render "layouts/filetree_javascript.html.erb"%>
+<table class="profile" summary="Profile information">
+	<tr>
+		<td class="main"><h1> <%= gravatar_for current_user %>
+		<%= current_user.user_name %> </h1></td>
+		<td class="sidebar round"><strong>Name : </strong> <%= (current_user.first_name+" "+current_user.last_name)  %>
+		<br />
+		<strong>User Name :</strong> <%= current_user.user_name %>
+		<br />
+		<strong>URL : </strong> <%= link_to user_path(current_user), current_user %> 
+		<br />
+		<br />
+		<strong>Number of queries entered :</strong> <%= current_user.queries.size%> 
+		<br />
+		<strong>Most entered query : </strong><%= if@haveQuery then @common_query.query_string else "no query currently." end%>  
+		<br />
+		<strong>Last entered query : </strong><%= if@haveQuery then @newest_query.query_string else "no query currently." end%>  
+		</td>
+	</tr>
+</table>
+<div id="accordionResizer" class="ui-widget-content round" style="padding:10px; width:40%; ">
+	<%= render "layouts/filetree.html.erb"%>
+	<script>
+		$().ready(function() {
+			$('.deleteDocButton').attr("src", "../assets/delete_30.png");
+		});
+
+	</script>
+</div>

@@ -1,0 +1,31 @@
+<table id="homeContent">
+	<span>See: <input type="button" value="Content GraphMap" onclick="graphMapSetting0();"/> - <input type="button" value="Web site GraphMap" onclick="graphMapSetting1();"></span>
+	<div class="border" id="graphMap">
+		<!-- Graph Map comes here-->
+	</div>
+	<div class="resultsDiv">
+		<span class="rank">Total <%=@response['documents'].size%> results</span>
+		<% @rank = 0%>
+		<% @response['documents'].each do |docs|%>
+		<% @rank = @rank+1%>
+		<% @id = 'result'+docs['id'].to_s%>
+		<% @faviconURL = docs['url']%>
+		<% @faviconURL = @faviconURL[7..@faviconURL.length]%>
+		<% @faviconURL = @faviconURL[0..@faviconURL.index('/')-1]%>
+		<div id="<%= @id%>" class="resultDiv" onmouseover="$('#<%= @id%>').addClass('highlightCustom')" onmouseout="$('#<%= @id%>').removeClass('highlightCustom')">
+			<div>
+				<div class="faviconDiv">
+				<img class="favicon" id="favicon<%= @id%>" width="16" height="16"  alt="" src="http://www.google.com/s2/favicons?domain=<%=@faviconURL%>" style="visibility: visible;"> </a>
+				</div>
+				<a class="linkBig link draggableTitle" href="<%= docs['url']%>"><%= docs['title']%></a>
+			</div>
+			<div id="snippetDiv">
+				<%= docs['snippet']%>
+			</div>
+			<div>
+				<a class="url"><%= docs['url']%></a>
+			</div>
+		</div>
+		<%end%>
+	</div>
+</table>

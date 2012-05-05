@@ -1,0 +1,192 @@
+<script type="text/javascript">
+/*****************************************************/
+var siteDomain = "http://localhost:3000/results?utf8=%E2%9C%93&query=";
+var maxScore = 0;
+var minScore = 0;
+var otherTopicScore = 0;
+var query = '';
+
+function clickOverCirleOnce(d){
+	if(d3.event.ctrlKey){
+		d3.select(this)
+		  .style("fill", "orange")
+		  .style("stroke", "yellow");
+		 query += d.name+" ";
+	}else{
+		d3.select(this)
+		  .style("fill", "lightcoral")
+		  .style("stroke", "red");
+		if(lastSelectedNode != null){
+			d3.select(lastSelectedNode)
+			  .style("fill", "lightgreen")
+			  .style("stroke", "green");
+		}
+		lastSelectedNode = this;	
+	}
+}
+
+
+function clickOverCirleTwice(d){
+	d3.select(this)
+		  .style("fill", "orange")
+		  .style("stroke", "yellow");
+    query += d.name+"";
+  	window.location = siteDomain+query;	 
+}
+
+
+function createNodesJson(data, numOfCluster){
+	var nodes = new Array(numOfCluster);
+	for(i = 0;  i<numOfCluster; i++){
+		var score = data[i].score;
+		nodes[i] = {"name":data[i].phrases, "score":score, "num_documents":data[i].size}
+	}
+	minScore = data[numOfCluster-2].score;
+	maxScore = data[0].score;
+	otherTopicScore = maxScore;
+	nodes[numOfCluster-1].score = otherTopicScore;
+	//alert(maxScore+" "+minScore);
+	return nodes;
+}
+
+/*Click on other elements */
+function clickOver(d,obj){
+	if(d3.event.ctrlKey){
+		d3.select(circle).style("fill", "orange")
+			       	 .style("stroke", "yellow");
+		query+=d.name+" ";	       	 
+	}else{
+		window.location = window.location + "&clus="+d.name;
+		d3.select(circle).style("fill", "lightcoral")
+				       	 .style("stroke", "red");
+		if(lastSelectedNode != null){
+			d3.select(lastSelectedNode).style("fill", "lightgreen")
+									   .style("stroke", "green");
+		}
+		lastSelectedNode = circle;
+	}	       						
+}
+
+function doubleClickOver(d,obj){
+	var circle = obj.parentNode.childNodes[0];
+	d3.select(circle).style("fill", "orange")
+			       	 .style("stroke", "yellow");
+	query+=d.name+"";
+	window.location = siteDomain+query;	 
+}
+
+/*****************************************************/
+/**
+ * GraphMap initialization
+ */
+var wid = document.getElementById("graphMap").offsetWidth;
+document.getElementById("graphMap").style.height = wid+"px";
+var w = wid;
+var h = wid;
+var textX = d3.scale.sqrt().domain([0, 4000]).range([0, 100]);
+var textSize = d3.scale.sqrt().domain([0, 4000]).range([0, 100]);
+var vis = d3.select(document.getElementById("graphMap")).append("svg:svg")
+    
+var json = <%=sanitize(@json)%>;
+
+var lastSelectedNode = null;
+var numOfClusters = json.length;
+var overlapLinks = FindOverlappingDocs(json,numOfClusters);
+var nodes = createNodesJson(json, numOfClusters);
+
+//console.log(nodes);
+var r = d3.scale.sqrt().domain([minScore/2, maxScore*1.5]).range([10, 20]);
+var linkw = d3.scale.sqrt().domain([1, maxOverlap]).range([5, 18]);
+
+//nodes.sort(function(a,b){ return parseFloat(b.score) - parseFloat(a.score) });
+   
+    var force = self.force = d3.layout.force()
+        .gravity(.07)
+        .linkDistance(100)
+        .linkStrength(0.4)
+        .charge(-150)
+        .nodes(nodes)
+        .links(overlapLinks)
+        .size([w, h])
+        .start();
+	
+	vis.style("opacity", 1e-6)
+   .transition()
+   .duration(3000)
+   	.style("opacity", 1);
+  
+  var links = vis.selectAll("line.link")
+				.data(overlapLinks)
+				.enter().append("svg:line")
+				.attr("class","link")
+				.style("stroke-width", function(d) { return linkw(d.overlapNum);})
+		        .attr("x1", function(d) { return d.source.x; })
+		        .attr("y1", function(d) { return d.source.y; })
+		        .attr("x2", function(d) { return d.target.x; })
+		        .attr("y2", function(d) { return d.target.y; });     	
+ 
+ var node = vis.selectAll("g.node")
+    .data(nodes)
+  	.enter().append("svg:g")
+    .attr("class", "node")
+  	.attr("cx", function(d) { return d.x; })
+	.attr("cy", function(d) { return d.y; })
+        .call(force.drag);
+     
+   console.log(node);       
+        
+	node.append("svg:circle")
+    .attr("class", "node2")
+    .attr("id", "circle")
+  	.style("fill", 'lightblue')
+	.style("stroke",'blue')
+    .on("click", clickOverCirleOnce)
+    .on("dblclick",clickOverCirleTwice)
+    .attr("r", function(d) { return r(d.score);});
+  
+    node.append("svg:text")
+	.attr("text-anchor", "middle")
+	.on("click", function(d){clickOver(d,this);})
+	.on("dblclick", function(d){doubleClickOver(d,this);})
+	.attr("class", "nodescore")
+	.attr("id", "nodescore")
+	.attr("dy", ".35em")
+	.attr("style", function(d,i){return "font-size:"+r(d.score)/1.25+"px;"})
+    .text(function(d,i) { if(d.name == "Other Topics") return ''; return d.num_documents });
+    
+node.append("svg:text")
+	.style("fill", 'black')
+	.style("stroke",'#fff')
+	.attr("text-anchor", "middle")
+    .attr("class", "nodetext")
+    //.attr("dx", function(d){return d.score/4;})
+    //.attr("style", function(d){ return "font-size:"+d.score/4+";";})
+    .on("click", function(d){clickOver(d,this);})
+    .on("dblclick", function(d){doubleClickOver(d,this);})
+    .attr("dy", function(d){return -1*(r(d.score)+2);})
+    .text(function(d) {if(d.name[0].length > 17) {return d.name[0].substring(0,15)+"..."; }else{return d.name;}});
+
+ 
+ node.append("title")
+	     .text(function(d) { return d.name+" "+d.score.toFixed(1); }); 
+ links.append("title")
+	     .text(function(d) { return d.overlapNum; }); 	     
+//document.getElementsById("nodescore").style.fontSize = "50px";    
+
+force.on("tick", function() {
+ links.attr("x1", function(d) { return d.source.x; })
+  .attr("y1", function(d) { return d.source.y; })
+  .attr("x2", function(d) { return d.target.x; })
+  .attr("y2", function(d) { return d.target.y; });
+  node.attr("transform", function(d) {return "translate(" + d.x + "," + d.y + ")";});
+});
+   
+
+
+
+/*************************************
+ * after double click
+ */
+
+
+</script>

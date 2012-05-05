@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+	<meta http-equiv=expires content=-1>
+	<meta http-equiv=Cache-Control CONTENT=no-cache>
+	<meta http-equiv=Pragma CONTENT=no-cache>
+
+	<head>
+		<title><%= title %></title>
+		<%= csrf_meta_tag %>
+		<%= render 'layouts/stylesheets.html.erb'%>
+		<%= javascript_include_tag :defaults %>
+		<%= javascript_include_tag "jquery.js"%>
+		<%= javascript_include_tag "jquery.tipsy.js", "jquery-ui-1.8.18.custom.min.js", "jquery.notify.js"%>
+		<link rel="shortcut icon" href="favicon.ico" >
+		<script type="text/javascript">
+			function notification(_title, _txt) {
+				var $notArea = $("#container").notify();
+				$notArea.notify("create", {
+					title : _title,
+					text : _txt
+				});
+			}
+
+			function validate() {
+				if(document.getElementById("searchBarHome").value == "") {
+					return false;
+				} else
+					return true;
+			}
+
+
+			$().ready(function() {
+				/**
+				 * accordion effect for folder tree _filetree.html.erb
+				 */
+				$(function() {
+					$("#accordion").accordion({
+						active : false,
+						fillSpace : false,
+						collapsible : true
+					});
+				});
+				$(function() {
+					$("#accordionResizer").resizable({
+						minHeight : 140,
+						resize : function() {
+							$("#accordion").accordion("resize");
+						}
+					});
+				});
+				/**
+				 * auto focus to search bar
+				 */
+				var searchBar = document.getElementsByClassName("searchBar")[0];
+				if(searchBar != null)
+					searchBar.focus();
+			});
+
+		</script>
+	</head>
+	<body>
+		<div class="container">
+			<%= render 'layouts/header.html.erb' %>
+			<section class="round">
+				<% flash.each do |key, value| %>
+				<div class="flash <%= key %>">
+					<%= value %>
+				</div>
+				<% end %>
+				<%= yield %>
+			</section>
+			<%= render 'layouts/footer.html.erb'%> <!--<%= debug(params) if Rails.env.development? %>-->
+		</div>
+		<%= render 'layouts/notification.html.erb'%>
+		<div id="feedback">
+			<a href="http://freeonlinesurveys.com/s.asp?sid=ax9hf5wuoqgfch546343" onClick="window.open('http://freeonlinesurveys.com/s.asp?sid=ax9hf5wuoqgfch546343', '','toolbar=0,location=0,directories=0,status=0,menubar=0,scrollbars=1,resizable=1,width=1024,height=768');return false" ><img src="/assets/feedback.png" /></a>
+		</div>
+
+	</body>
+</html>

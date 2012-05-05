@@ -1,0 +1,14 @@
+<%if !user_signed_in?%>
+<%= link_to "Sign up now!", new_user_registration_path, :class => "signup_button"%>
+<%else%>
+<%=%>
+<%end%>
+<center>
+	<div  class="homeContent">
+		<%= image_tag "bunchit_logos/bunchit_buddle.jpg", :alt => "buncho", :id => "buncho"%>
+		<%=form_tag "/results", :encoding=>"",:method=>"get", :id=>"queryForm", :onSubmit=>"return validate();" do%>
+		<%= text_field_tag :query, "",:size=>50, :id=>"searchBarHome", :class=>"searchBar",:autocomplete=>"off"%>
+		<%= submit_tag "",:name=>nil,:id=>"searchButton", :class=>"round",:onSubmit=>"" %>
+		<%end%>
+	</div>
+</center>

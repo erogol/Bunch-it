@@ -1,0 +1,56 @@
+<header>
+	<% logo= image_tag("logo_black.jpg", :alt => "Bunchit App",:id=>"logo", :class => "round", :height => "25", :width => "155") %>
+	<%if (!@title.eql?"Home")#if page is home, dont show upper search bar %>
+	<%= link_to logo, root_path, :class=>"span-5"%>
+	<%=form_tag "/results", :method=>"get", :id=>"queryFormResultsPage", :onSubmit=>"return validate();" do%>
+	<%= text_field_tag :query, @query,:size=>50, :id=>"searchBarResults", :class=>"searchBar span-10",:autocomplete=>"off"%>
+	<%= submit_tag "", :name=>nil,:id=>"searchButtonResultsPage", :onSubmit=>"alert('sadfasf')" %>
+	<nav class="round">
+		<ul>
+			<li>
+				<%= link_to "Home", root_path%>
+			</li>
+			<li>
+				<%= link_to "Help (learn Bunch-It)", help_path %>
+			</li>
+			<% if signed_in? %>
+			<li>
+				<%= link_to 'Sign out', logout_path, :method => :delete %>
+			</li>
+			<li>
+				<%= link_to "Profile "+current_user.user_name, users_path%>
+			</li>
+			<%else%>
+			<li>
+				<%= link_to "Sign in", new_user_session_path %>
+			</li>
+			<%end%>
+		</ul>
+	</nav>
+	<%end%>
+	<%else%>
+	<%= link_to logo, root_path%>
+	<nav class="round">
+		<ul>
+			<li>
+				<%= link_to "Home", root_path%>
+			</li>
+			<li>
+				<%= link_to "Help (learn Bunch-It)", help_path %>
+			</li>
+			<% if signed_in? %>
+			<li>
+				<%= link_to 'Sign out', logout_path, :method => "delete" %>
+			</li>
+			<li>
+				<%= link_to "Profile "+current_user.user_name, users_path%>
+			</li>
+			<% else %>
+			<li>
+				<%= link_to "Sign in", new_user_session_path %>
+			</li>
+			<% end %>
+		</ul>
+	</nav>
+	<%end%>
+</header>
